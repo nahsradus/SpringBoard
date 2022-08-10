@@ -41,7 +41,7 @@ WHERE membercost !=0
 /* Q2: How many facilities do not charge a fee to members? */
 SELECT COUNT(facid) 
 FROM `Facilities` 
-WHERE membercost !=0
+WHERE membercost =0
 
 /* Q3: Write an SQL query to show a list of facilities that charge a fee to members,
 where the fee is less than 20% of the facility's monthly maintenance cost.
@@ -78,7 +78,14 @@ WHERE joindate=(SELECT MAX(joindate) FROM Members)
 Include in your output the name of the court, and the name of the member
 formatted as a single column. Ensure no duplicate data, and order by
 the member name. */
-
+SELECT DISTINCT b.facid AS Facility_ID, f.name as Facility_Name,b.memid as Member_ID, CONCAT(m.firstname,' ',m.surname) as Member
+FROM Members as m
+INNER JOIN Bookings as b
+ON m.memid = b.memid 
+INNER JOIN Facilities as f
+ON f.facid = b.facid
+WHERE b.facid in [0,1] AND b.memid !=0
+ORDER By Member
 
 /* Q8: Produce a list of bookings on the day of 2012-09-14 which
 will cost the member (or guest) more than $30. Remember that guests have
@@ -86,9 +93,44 @@ different costs to members (the listed costs are per half-hour 'slot'), and
 the guest user's ID is always 0. Include in your output the name of the
 facility, the name of the member formatted as a single column, and the cost.
 Order by descending cost, and do not use any subqueries. */
-
+SELECT b.starttime, f.name, 
+CASE WHEN b.memid != 0 THEN CONCAT(m.firstname, ' ', m.surname)
+     ELSE m.firstname 
+END AS name, 
+CASE WHEN b.memid != 0 THEN b.slots * f.membercost
+     ELSE b.slots * f.guestcost
+END AS cost
+FROM Bookings as b
+inner join Members as m
+on b.memid = m.memid
+inner join Facilities as f
+on f.facid = b.facid
+WHERE CAST(starttime AS date) = CAST('2012-09-14' AS date) AND
+CASE WHEN b.memid != 0 THEN b.slots * f.membercost
+     ELSE b.slots * f.guestcost
+END > 30
+ORDER BY cost DESC;
 
 /* Q9: This time, produce the same result as in Q8, but using a subquery. */
+SELECT sub.starttime, sub.name, 
+CASE WHEN sub.memid != 0 THEN CONCAT(sub.firstname, ' ', sub.surname)
+     ELSE sub.firstname 
+END AS name, 
+CASE WHEN sub.memid != 0 THEN sub.slots * sub.membercost
+     ELSE sub.slots * sub.guestcost
+END AS cost
+FROM (select b.starttime, b.facid, b.memid, b.slots, f.membercost, f.guestcost, f.name,
+      m.firstname, m.surname
+      from Bookings as b
+      inner join Members as m
+      on b.memid = m.memid
+      inner join Facilities as f
+      on f.facid = b.facid) as sub
+WHERE CAST(starttime AS date) = CAST('2012-09-14' AS date) AND
+CASE WHEN memid != 0 THEN slots * membercost
+     ELSE slots * guestcost
+END > 30
+ORDER BY cost DESC;
 
 
 /* PART 2: SQLite
